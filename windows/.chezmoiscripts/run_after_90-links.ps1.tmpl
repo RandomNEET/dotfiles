@@ -1,5 +1,0 @@
-{{ "\ufeff" }}$DotfilesHome = '{{ .chezmoi.destDir | replace "'" "''" }}'
-$DotfilesSource = '{{ .chezmoi.sourceDir | replace "'" "''" }}'
-$ScoopRoot = if ($env:SCOOP) { $env:SCOOP } else { Join-Path $DotfilesHome 'scoop' }
-{{ template "windows.ps1" . }}
-Connect-Dotfiles

@@ -35,4 +35,4 @@ if ($PrepareOnly) { return }
 & chezmoi init --source $PSScriptRoot
 if ($LASTEXITCODE -ne 0) { throw 'chezmoi init failed.' }
 & chezmoi apply
-if ($LASTEXITCODE -ne 0) { throw 'chezmoi apply failed. See the backup manifest before retrying.' }
+if ($LASTEXITCODE -ne 0) { throw 'chezmoi apply failed. Review the reported error and run chezmoi diff before retrying.' }

@@ -1,4 +1,5 @@
 install.ps1
+packages.json
 {{ if ne .chezmoi.os "windows" }}
 **
 {{ end }}

@@ -1,0 +1,6 @@
+{{ "\ufeff" }}# packages.json: {{ include "packages.json" | sha256sum }}
+$ErrorActionPreference = 'Stop'
+if ($env:OS -ne 'Windows_NT') { throw 'Package installation requires native Windows.' }
+$global:LASTEXITCODE = 0
+& scoop import '{{ joinPath .chezmoi.sourceDir "packages.json" | replace "'" "''" }}'
+if ($LASTEXITCODE -ne 0) { throw 'Scoop package import failed.' }

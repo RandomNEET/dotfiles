@@ -1,0 +1,54 @@
+{{ "\ufeff" }}$ErrorActionPreference = 'Stop'
+if ($env:OS -ne 'Windows_NT') { throw 'Scoop persist linking requires native Windows.' }
+$config = '{{ joinPath .chezmoi.destDir ".config" | replace "'" "''" }}'
+$scoopRoot = if ($env:SCOOP) { $env:SCOOP } else { '{{ joinPath .chezmoi.destDir "scoop" | replace "'" "''" }}' }
+$persist = Join-Path $scoopRoot 'persist'
+$separator = [IO.Path]::DirectorySeparatorChar
+$config = [IO.Path]::GetFullPath($config).TrimEnd($separator)
+$persist = [IO.Path]::GetFullPath($persist).TrimEnd($separator)
+if ($persist -ieq $config -or
+    $persist.StartsWith($config + $separator, [StringComparison]::OrdinalIgnoreCase) -or
+    $config.StartsWith($persist + $separator, [StringComparison]::OrdinalIgnoreCase)) {
+    throw "Overlapping persist and .config paths: $persist -> $config"
+}
+$configEntry = Get-Item -LiteralPath $config -Force -ErrorAction SilentlyContinue
+if ($configEntry -and (-not $configEntry.PSIsContainer -or
+    ($configEntry.Attributes -band [IO.FileAttributes]::ReparsePoint))) {
+    throw "$config must be a real directory before linking Scoop persist."
+}
+$entry = Get-Item -LiteralPath $persist -Force -ErrorAction SilentlyContinue
+if ($entry -and ($entry.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+    $target = [string]@($entry.Target)[0]
+    if ($target -and -not [IO.Path]::IsPathRooted($target)) { $target = Join-Path $scoopRoot $target }
+    if ($entry.PSIsContainer -and $target -and [IO.Path]::GetFullPath($target).TrimEnd($separator) -ieq $config) {
+        return
+    }
+    throw "$persist already links elsewhere. Resolve that link before retrying."
+}
+if ($entry -and -not $entry.PSIsContainer) { throw "$persist is a file; move it before retrying." }
+New-Item -ItemType Directory -Path $config -Force | Out-Null
+$previous = $null
+if ($entry) {
+    # Merge missing data only; retain the original directory, including conflicts.
+    # Copy link entries themselves rather than following their targets.
+    & robocopy $persist $config /E /COPY:DAT /DCOPY:DAT /SL /SJ /XC /XN /XO /R:0 /W:0 /NFL /NDL /NP
+    if ($LASTEXITCODE -ge 8) { throw "Cannot merge $persist into $config. Original persist is unchanged." }
+    $global:LASTEXITCODE = 0
+    $previous = $persist + '.before-dotfiles-' + [guid]::NewGuid().ToString('N')
+    try {
+        [IO.Directory]::Move($persist, $previous)
+    } catch {
+        throw "Cannot rename $persist. Close applications using it and retry. Original persist is unchanged. $($_.Exception.Message)"
+    }
+    Write-Host "Original persist retained at $previous"
+}
+try {
+    New-Item -ItemType Directory -Path $scoopRoot -Force | Out-Null
+    New-Item -ItemType Junction -Path $persist -Target $config | Out-Null
+} catch {
+    if ($previous -and -not (Get-Item -LiteralPath $persist -Force -ErrorAction SilentlyContinue)) {
+        [IO.Directory]::Move($previous, $persist)
+    }
+    throw
+}
+Write-Host "$persist -> $config"

@@ -15,7 +15,7 @@ if (-not $RepositoryDirectory) {
     $RepositoryDirectory = if (Test-Path -LiteralPath (Join-Path $PSScriptRoot '.git')) {
         $PSScriptRoot
     } else {
-        Join-Path $HOME '.local/share/chezmoi'
+        Join-Path $HOME '.local/share/dotfiles'
     }
 }
 $bootstrap = Join-Path $PSScriptRoot "$platform/install.ps1"

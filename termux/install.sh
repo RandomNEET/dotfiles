@@ -102,10 +102,8 @@ for pair in \
       continue
     fi
     if [[ -e "$dst" || -L "$dst" ]]; then
-      backup="$HOME/.local/state/dotfiles/backups/$(date -u +%Y%m%dT%H%M%S)-$$/storage/${dst##*/}"
-      mkdir -p "$(dirname "$backup")"
-      mv -- "$dst" "$backup"
-      info "Backed up $dst to $backup"
+      warn "  $dst already exists, skipping."
+      continue
     fi
     ln -s "$src" "$dst"
     info "  $dst → $src"

@@ -13,7 +13,7 @@ case "${1:-}" in
   *) echo 'Usage: bash install.sh [--skip-update]' >&2; exit 1 ;;
 esac
 repo_url="${DOTFILES_REPO:-https://github.com/RandomNEET/dotfiles}"
-repo_dir="${DOTFILES_DIR:-$HOME/.local/share/chezmoi}"
+repo_dir="${DOTFILES_DIR:-$HOME/.local/share/dotfiles}"
 local_root=''
 if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
   local_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"

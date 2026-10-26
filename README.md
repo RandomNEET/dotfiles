@@ -2,10 +2,14 @@
 
 使用 chezmoi 管理配置，目前支持：
 
-- Termux：使用 pkg 管理软件包。
-- Windows：使用 Scoop 管理软件包。
+- Termux：使用 pkg 管理软件包
+- Windows：使用 Scoop 管理软件包
+
+配置由 chezmoi 直接写入各程序使用的路径
 
 ## 安装
+
+默认将仓库保存到 `~/.local/share/dotfiles`
 
 ### Termux
 
@@ -14,6 +18,10 @@ curl -fsSL https://raw.githubusercontent.com/RandomNEET/dotfiles/main/install.sh
 ```
 
 ### Windows
+
+将 Scoop 的 `persist` 目录链接到 `~/.config`，其他配置由 chezmoi 直接部署到各程序使用的路径
+
+已有 persist 数据会合并到 `.config`，同名文件保留 `.config` 中的版本，原 persist 目录保留为 `persist.before-dotfiles-*`
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
@@ -46,3 +54,5 @@ chezmoi update               # 拉取仓库更新并应用
 chezmoi edit <目标文件>       # 编辑受管理的配置
 chezmoi add <目标文件>        # 将本地配置保存到源目录
 ```
+
+已有配置先用 `chezmoi diff` 查看，冲突按 chezmoi 提示处理
