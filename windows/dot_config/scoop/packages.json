@@ -1,0 +1,35 @@
+{
+  "buckets": [
+    { "Name": "main", "Source": "https://github.com/ScoopInstaller/Main.git" },
+    {
+      "Name": "extras",
+      "Source": "https://github.com/ScoopInstaller/Extras.git"
+    },
+    {
+      "Name": "nerd-fonts",
+      "Source": "https://github.com/matthewjberger/scoop-nerd-fonts.git"
+    }
+  ],
+  "apps": [
+    { "Name": "7zip", "Source": "main" },
+    { "Name": "bat", "Source": "main" },
+    { "Name": "btop", "Source": "main" },
+    { "Name": "chezmoi", "Source": "main" },
+    { "Name": "eza", "Source": "main" },
+    { "Name": "fastfetch", "Source": "main" },
+    { "Name": "fd", "Source": "main" },
+    { "Name": "fzf", "Source": "main" },
+    { "Name": "git", "Source": "main" },
+    { "Name": "glazewm", "Source": "extras" },
+    { "Name": "JetBrainsMono-NF-Mono", "Source": "nerd-fonts" },
+    { "Name": "lazygit", "Source": "extras" },
+    { "Name": "neovim", "Source": "main" },
+    { "Name": "nu", "Source": "main" },
+    { "Name": "ripgrep", "Source": "main" },
+    { "Name": "starship", "Source": "main" },
+    { "Name": "wezterm", "Source": "extras" },
+    { "Name": "yazi", "Source": "main" },
+    { "Name": "yasb", "Source": "extras" },
+    { "Name": "zoxide", "Source": "main" }
+  ]
+}

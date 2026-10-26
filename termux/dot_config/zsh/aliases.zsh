@@ -1,5 +1,4 @@
 # general
-alias dotsync='curl -fsSL https://raw.githubusercontent.com/RandomNEET/termuxdots/main/install.sh | bash'
 alias -- _='sudo '
 alias -g -- ..='..'
 alias -g -- ...='../..'

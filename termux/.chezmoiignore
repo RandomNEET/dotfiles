@@ -1,0 +1,5 @@
+install.sh
+packages.list
+{{ if and (ne .chezmoi.os "android") (ne (env "PREFIX") "/data/data/com.termux/files/usr") }}
+**
+{{ end }}

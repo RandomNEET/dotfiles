@@ -1,0 +1,4 @@
+install.ps1
+{{ if ne .chezmoi.os "windows" }}
+**
+{{ end }}
