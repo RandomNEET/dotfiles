@@ -36,19 +36,18 @@ bars:
       right: 4
     widgets:
       left:
-        - home
         - glazewm_workspaces
         - active_window
+        - media
       center:
         - clock
       right:
-        - media
-        - systray
         - cpu
         - memory
         - volume
+        - systray
         - notifications
-        - power_menu
+        - home
 widgets:
   home:
     type: yasb.home.HomeWidget

@@ -1,5 +1,6 @@
 {
   "extras": [
+    "lazyvim.plugins.extras.formatting.prettier",
     "lazyvim.plugins.extras.util.startuptime"
   ],
   "install_version": 8,
