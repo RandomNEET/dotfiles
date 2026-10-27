@@ -20,16 +20,19 @@
     { "Name": "fd", "Source": "main" },
     { "Name": "fzf", "Source": "main" },
     { "Name": "git", "Source": "main" },
-    { "Name": "glazewm", "Source": "extras" },
-    { "Name": "JetBrainsMono-NF-Mono", "Source": "nerd-fonts" },
-    { "Name": "lazygit", "Source": "extras" },
     { "Name": "neovim", "Source": "main" },
     { "Name": "nu", "Source": "main" },
     { "Name": "ripgrep", "Source": "main" },
     { "Name": "starship", "Source": "main" },
-    { "Name": "wezterm", "Source": "extras" },
     { "Name": "yazi", "Source": "main" },
+    { "Name": "zellij", "Source": "main" },
+    { "Name": "zoxide", "Source": "main" },
+    
+    { "Name": "glazewm", "Source": "extras" },
+    { "Name": "lazygit", "Source": "extras" },
+    { "Name": "wezterm", "Source": "extras" },
     { "Name": "yasb", "Source": "extras" },
-    { "Name": "zoxide", "Source": "main" }
+    
+    { "Name": "JetBrainsMono-NF-Mono", "Source": "nerd-fonts" }
   ]
 }

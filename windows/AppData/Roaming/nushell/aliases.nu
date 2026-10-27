@@ -150,6 +150,7 @@ alias gwta = ^git worktree add
 alias gwtls = ^git worktree list
 alias gwtmv = ^git worktree move
 alias gwtrm = ^git worktree remove
+alias lg = ^lazygit
 
 # Git shortcuts requiring pipelines, command substitution, or environment changes
 def --wrapped gdct [...args: string] {
