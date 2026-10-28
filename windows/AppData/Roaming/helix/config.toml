@@ -1,0 +1,14 @@
+[editor]
+bufferline = "multiple"
+color-modes = true
+default-yank-register = "+"
+line-number = "relative"
+popup-border = "menu"
+
+[editor.soft-wrap]
+enable = true
+
+[keys.normal.space]
+"$" = "goto_line_end"
+0 = "goto_line_start"
+space = "file_picker"

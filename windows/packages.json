@@ -20,6 +20,8 @@
     { "Name": "fd", "Source": "main" },
     { "Name": "fzf", "Source": "main" },
     { "Name": "git", "Source": "main" },
+    { "Name": "helix", "Source": "main" },
+    { "Name": "less", "Source": "main" },
     { "Name": "neovim", "Source": "main" },
     { "Name": "nodejs", "Source": "main" },
     { "Name": "nu", "Source": "main" },
