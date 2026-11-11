@@ -129,7 +129,6 @@ news_tlmc() {
 
 # Sync
 
-# Quote rsync filter metacharacters while leaving path separators intact.
 escape_filter_path() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/\[/\\\[/g; s/\]/\\\]/g; s/\*/\\\*/g; s/\?/\\\?/g'
 }
@@ -203,7 +202,6 @@ sync_tlmc() {
       return 1
     }
 
-    # .config is local state: never fetch it or remove it with --delete.
     printf 'P /%s/.config\n- /%s/.config\n' "$safe_circle" "$safe_circle" >>"$filter_file"
     if [ "$granularity" = "circle" ]; then
       printf '+ /%s/***\n' "$safe_circle" >>"$filter_file"
@@ -236,7 +234,6 @@ sync_tlmc() {
 
 # Add
 
-# Print only immediate remote subdirectories, one per line.
 list_remote_dirs() {
   local remote="$1" list_file status
   list_file=$(mktemp) || return 1
@@ -901,7 +898,6 @@ playlist_tlmc() {
 
 # Split
 
-# Print "<tracknum>\t<title>" lines from a cue sheet
 parse_cue_tracks() {
   awk '
     BEGIN { tn = 0 }
@@ -922,7 +918,6 @@ parse_cue_tracks() {
   ' "$1"
 }
 
-# Sanitize a string for use as a filename
 sanitize_filename() {
   local s="$1"
   s="${s//\//_}"
@@ -966,35 +961,67 @@ find_cue_flac() {
     fi
   done < <(find "$cue_dir" -maxdepth 1 -mindepth 1 -type f -iname '*.flac' -print0)
 
-  # Legacy-encoded CUE sheets may not match their UTF-8 filesystem name.
   if [ "$allow_single_fallback" -eq 1 ] && [ "${#flacs[@]}" -eq 1 ]; then
     printf '%s' "${flacs[0]}"
     return 0
   fi
   return 1
 }
+split_audio_image() {
+  local cue="$1" image="$2" output="$3" rate bits channels points
+  rate=$(metaflac --show-sample-rate "$image") || return 1
+  bits=$(metaflac --show-bps "$image") || return 1
+  channels=$(metaflac --show-channels "$image") || return 1
+  points=$(cuebreakpoints "$cue") || return 1
+  if [ "$rate" -eq 44100 ] && [ "$bits" -eq 16 ] && [ "$channels" -eq 2 ]; then
+    shnsplit -O always -d "$output" -a track -o 'flac ext=flac' "$image" <<<"$points"
+    return $?
+  fi
+  command -v ffmpeg >/dev/null || {
+    echo 'Error: non-CD audio requires ffmpeg.' >&2
+    return 1
+  }
+  local start=0 end index=1 filter target
+  local -a boundaries=()
+  mapfile -t boundaries < <(awk -F '[:.]' -v rate="$rate" \
+    'NF == 3 { printf "%.0f\n", (($1 * 60 + $2) * 75 + $3) * rate / 75 }' <<<"$points")
+  boundaries+=("")
+  for end in "${boundaries[@]}"; do
+    filter="atrim=start_sample=$start"
+    [ -z "$end" ] || filter="$filter:end_sample=$end"
+    printf -v target '%s/track%02d.flac' "$output" "$index"
+    ffmpeg -nostdin -v error -y -i "$image" -map 0:a:0 \
+      -af "$filter,asetpts=PTS-STARTPTS" -map_metadata -1 -c:a flac "$target" || return 1
+    start="$end"
+    index=$((index + 1))
+  done
+}
 
-split_cue_image() {
+
+split_cue_image() (
   local source_cue="$1" source_flac="$2" tracks_dir="$3"
   local album_dir
   album_dir=$(dirname "$source_cue")
 
-  # A single CUE and FLAC in the same directory are an unambiguous pair.
-  # Do not compare their names: older CUE sheets may use a legacy encoding
-  # while filesystem names are UTF-8.
+  local normalized_cue original_cue="$source_cue"
+  normalized_cue=$(mktemp --suffix=.cue) || return 1
+  trap 'rm -f -- "$normalized_cue"' EXIT
+  LC_ALL=C sed '1s/^\xEF\xBB\xBF//; s/\r$//; /^[[:space:]]*REM[[:space:]]/d' \
+    "$source_cue" >"$normalized_cue" || return 1
+  printf '\n' >>"$normalized_cue"
+      source_cue="$normalized_cue"
+
   if ! grep -qiE '^[[:space:]]*FILE[[:space:]]+' "$source_cue"; then
     return 0
   fi
 
-  # Skip if tracks/ already has the right number of flacs (use find, not
-  # glob — [ ] in paths). Mismatch → stale partial split, redo it
   local cue_track_count existing_count=0
   cue_track_count=$(grep -cE '^[[:space:]]*TRACK[[:space:]]+[0-9]+' "$source_cue")
   if [ -d "$tracks_dir" ]; then
     existing_count=$(find "$tracks_dir" -maxdepth 1 -type f -name '*.flac' | wc -l)
   fi
   if [ "$existing_count" -eq "$cue_track_count" ] && [ "$cue_track_count" -gt 0 ]; then
-    echo "[split-cue] skip (already split): $source_cue"
+    echo "[split-cue] skip (already split): $original_cue"
     return 0
   fi
   if [ "$existing_count" -gt 0 ]; then
@@ -1002,9 +1029,8 @@ split_cue_image() {
     find "$tracks_dir" -maxdepth 1 -type f -name '*.flac' -delete
   fi
 
-  echo "[split-cue] $source_cue"
+  echo "[split-cue] $original_cue"
 
-  # Extract cover art to a temp file (metaflac --import-picture-from needs a file)
   local cover_file=""
   if metaflac --list "$source_flac" 2>/dev/null | grep -q "type: 6"; then
     cover_file=$(mktemp --suffix=.tlmc-cover)
@@ -1016,14 +1042,9 @@ split_cue_image() {
 
   mkdir -p "$tracks_dir"
 
-  # Split: cuebreakpoints | shnsplit. -o "flac ext=flac" forces FLAC output
-  # despite the cue's "FILE ... WAVE" line
   local split_log
   split_log=$(mktemp)
-  if ! cuebreakpoints "$source_cue" 2>"$split_log" |
-    shnsplit -O always -d "$tracks_dir" -a "track" \
-      -o "flac ext=flac" "$source_flac" \
-      >>"$split_log" 2>&1; then
+  if ! split_audio_image "$source_cue" "$source_flac" "$tracks_dir" >"$split_log" 2>&1; then
     echo "[split-cue]   ERROR: split failed for $album_dir" >&2
     cat "$split_log" >&2
     rm -f "$split_log" "$cover_file"
@@ -1031,15 +1052,12 @@ split_cue_image() {
   fi
   rm -f "$split_log"
 
-  # Tag from cue. Stderr dropped — non-UTF-8 REM DATE lines make cuetag.sh
-  # emit harmless "bad character" warnings while tags still apply
   if ! cuetag.sh "$source_cue" "$tracks_dir"/track*.flac 2>/dev/null; then
     echo "[split-cue]   ERROR: cuetag.sh failed for $album_dir" >&2
     rm -f "$cover_file"
     return 1
   fi
 
-  # Re-embed cover. metaflac spec: TYPE|MIME|DESC|WxHxD|FILE
   if [ -n "$cover_file" ] && [ -s "$cover_file" ]; then
     local mime
     mime=$(file -b --mime-type "$cover_file" 2>/dev/null || echo "image/jpeg")
@@ -1051,7 +1069,6 @@ split_cue_image() {
   fi
   rm -f "$cover_file"
 
-  # Rename trackNN.flac -> NN. <title>.flac. Suffix to avoid clobber
   local renamed=0
   while IFS=$'\t' read -r tn title; do
     [ -n "$tn" ] || continue
@@ -1082,9 +1099,9 @@ split_cue_image() {
   count=$(find "$tracks_dir" -maxdepth 1 -type f -name '*.flac' | wc -l)
   echo "[split-cue]   -> ${renamed} renamed (${count} total) in $tracks_dir"
   return 0
-}
+)
 
-stored_split_fingerprint() {
+    stored_split_fingerprint() {
   sed -n 's/^split_fingerprint=//p' "$1/.config" | tail -n 1
 }
 
