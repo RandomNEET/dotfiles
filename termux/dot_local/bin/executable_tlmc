@@ -7,6 +7,7 @@ export RSYNC_PASSWORD=knowledge
 usage() {
   cat <<'EOF'
 Usage:
+  tlmc COMMAND [ARGS] [COMMAND [ARGS] ...] LIBRARY_OR_CIRCLE
   tlmc news
   tlmc sync [delete] LIBRARY_OR_CIRCLE
   tlmc add LOCAL_DIR
@@ -997,7 +998,6 @@ split_audio_image() {
   done
 }
 
-
 split_cue_image() (
   local source_cue="$1" source_flac="$2" tracks_dir="$3"
   local album_dir
@@ -1009,7 +1009,7 @@ split_cue_image() (
   LC_ALL=C sed '1s/^\xEF\xBB\xBF//; s/\r$//; /^[[:space:]]*REM[[:space:]]/d' \
     "$source_cue" >"$normalized_cue" || return 1
   printf '\n' >>"$normalized_cue"
-      source_cue="$normalized_cue"
+  source_cue="$normalized_cue"
 
   if ! grep -qiE '^[[:space:]]*FILE[[:space:]]+' "$source_cue"; then
     return 0
@@ -1101,7 +1101,7 @@ split_cue_image() (
   return 0
 )
 
-    stored_split_fingerprint() {
+stored_split_fingerprint() {
   sed -n 's/^split_fingerprint=//p' "$1/.config" | tail -n 1
 }
 
@@ -1236,59 +1236,134 @@ split_tlmc() {
   [ "$failures" -eq 0 ] || die "$failures album(s) failed to split."
 }
 
-case "${1:-}" in
-__preview-circle)
-  shift
-  preview_circle "$@"
-  ;;
-__preview-album)
-  shift
-  preview_album "$@"
-  ;;
-__preview-config)
-  shift
-  preview_config "$@"
-  ;;
-__preview-local-albums)
-  shift
-  preview_local_albums "$@"
-  ;;
-__preview-local-album)
-  shift
-  preview_local_album_contents "$@"
-  ;;
-news)
-  shift
-  news_tlmc "$@"
-  ;;
-sync)
-  shift
-  sync_tlmc "$@"
-  ;;
-add)
-  shift
-  add_tlmc "$@"
-  ;;
-edit)
-  shift
-  edit_tlmc "$@"
-  ;;
-delete)
-  shift
-  delete_tlmc "$@"
-  ;;
-playlist)
-  shift
-  playlist_tlmc "$@"
-  ;;
-split)
-  shift
-  split_tlmc "$@"
-  ;;
--h | --help | help | "") usage ;;
-*)
-  echo "Error: unknown command '$1'." >&2
-  usage >&2
-  exit 1
-  ;;
-esac
+dispatch() {
+  case "${1:-}" in
+  __preview-circle)
+    shift
+    preview_circle "$@"
+    ;;
+  __preview-album)
+    shift
+    preview_album "$@"
+    ;;
+  __preview-config)
+    shift
+    preview_config "$@"
+    ;;
+  __preview-local-albums)
+    shift
+    preview_local_albums "$@"
+    ;;
+  __preview-local-album)
+    shift
+    preview_local_album_contents "$@"
+    ;;
+  news)
+    shift
+    news_tlmc "$@"
+    ;;
+  sync)
+    shift
+    sync_tlmc "$@"
+    ;;
+  add)
+    shift
+    add_tlmc "$@"
+    ;;
+  edit)
+    shift
+    edit_tlmc "$@"
+    ;;
+  delete)
+    shift
+    delete_tlmc "$@"
+    ;;
+  playlist)
+    shift
+    playlist_tlmc "$@"
+    ;;
+  split)
+    shift
+    split_tlmc "$@"
+    ;;
+  -h | --help | help | "") usage ;;
+  *)
+    echo "Error: unknown command '$1'." >&2
+    usage >&2
+    exit 1
+    ;;
+  esac
+}
+
+run_commands() {
+  local directory="" command="" argument status index start count
+  local -a commands=() offsets=() counts=() arguments=()
+
+  case "${1:-}" in
+  __preview-* | -h | --help | help | "")
+    dispatch "$@"
+    return $?
+    ;;
+  esac
+  for argument in "$@"; do
+    case "$argument" in
+    -h | --help)
+      usage
+      return 0
+      ;;
+    esac
+  done
+
+  if [ "$#" -gt 1 ]; then
+    directory="${!#}"
+    set -- "${@:1:$#-1}"
+  fi
+
+  while [ "$#" -gt 0 ]; do
+    argument="$1"
+    shift
+    case "$command:$argument" in
+    sync:delete | playlist:rebuild | playlist:delete)
+      arguments+=("$argument")
+      counts[${#commands[@]} - 1]=$((counts[${#commands[@]} - 1] + 1))
+      continue
+      ;;
+    sync:exclude)
+      [ "$#" -gt 0 ] && [ -n "$1" ] || die "exclude requires a non-empty PATTERN."
+      arguments+=("$argument" "$1")
+      counts[${#commands[@]} - 1]=$((counts[${#commands[@]} - 1] + 2))
+      shift
+      continue
+      ;;
+    esac
+    case "$argument" in
+    news | sync | add | edit | delete | playlist | split)
+      command="$argument"
+      commands+=("$command")
+      offsets+=("${#arguments[@]}")
+      counts+=(0)
+      ;;
+    *) die "unexpected command or argument: $argument" ;;
+    esac
+  done
+
+  for command in "${commands[@]}"; do
+    if [ "$command" != news ]; then
+      [ -n "$directory" ] && [ -d "$directory" ] || die "valid LOCAL_DIR is required."
+    fi
+  done
+  for ((index = 0; index < ${#commands[@]}; index++)); do
+    command="${commands[index]}"
+    start="${offsets[index]}"
+    count="${counts[index]}"
+    if [ "$command" = news ]; then
+      (dispatch "$command")
+    else
+      (dispatch "$command" "${arguments[@]:start:count}" "$directory")
+    fi
+    status=$?
+    [ "$status" -eq 0 ] || return "$status"
+  done
+}
+
+run_commands "$@"
